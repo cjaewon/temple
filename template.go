@@ -9,7 +9,9 @@ func (t *Template) ParseFiles(filenames ...string) (*Template, error) {
 	}
 
 	if t.cfg.Hot {
-		watch(filenames...)
+		if err := t.watcher.Watch(filenames...); err != nil {
+			return nil, err
+		}
 	}
 
 	t.Template = tmpl
@@ -23,7 +25,7 @@ func (t *Template) ParseGlob(pattern string) (*Template, error) {
 	}
 
 	if t.cfg.Hot {
-		if err := watchGlob(pattern); err != nil {
+		if err := t.watcher.WatchGlob(pattern); err != nil {
 			return nil, err
 		}
 	}
@@ -39,7 +41,7 @@ func (t *Template) ParseFS(fs fs.FS, patterns ...string) (*Template, error) {
 	}
 
 	if t.cfg.Hot {
-		if err := watchFS(fs, patterns); err != nil {
+		if err := t.watcher.WatchFS(fs, patterns); err != nil {
 			return nil, err
 		}
 	}

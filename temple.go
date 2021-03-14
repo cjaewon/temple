@@ -9,10 +9,11 @@ type Config struct {
 	Hot  bool
 }
 
-// Template is template.Template wrapper which cover all of html/template method
+// Template is template.Template wrapper which cover all of the html/template method
 type Template struct {
 	*template.Template
-	cfg *Config
+	cfg     *Config
+	watcher *Watcher
 }
 
 // New creates a Template instance
@@ -21,6 +22,8 @@ func New(c *Config) *Template {
 		Template: template.New(c.Name),
 		cfg:      c,
 	}
+
+	t.watcher = newWatcher(&t)
 
 	return &t
 }
