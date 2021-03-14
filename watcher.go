@@ -2,19 +2,18 @@ package temple
 
 import (
 	"fmt"
-	"io/fs"
-	"log"
 	"path/filepath"
+	"text/template"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 type Watcher struct {
-	FSWatcher *fsnotify.Watcher
-	template  *Template
+	*fsnotify.Watcher
+	t *template.Template
 }
 
-func newWatcher(t *Template) *Watcher {
+func newWatcher(t *template.Template) *Watcher {
 	w := Watcher{}
 
 	fsWatcher, err := fsnotify.NewWatcher()
@@ -22,70 +21,35 @@ func newWatcher(t *Template) *Watcher {
 		panic(err)
 	}
 
-	w.template = t
-	w.FSWatcher = fsWatcher
+	w.t = t
+	w.Watcher = fsWatcher
 
 	go w.WatchWorker()
 
 	return &w
 }
 
-func (w *Watcher) WatchGlob(pattern string) error {
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return err
-	}
-
-	if err := w.Watch(matches...); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (w *Watcher) WatchFS(fsys fs.FS, patterns []string) error {
-	var filenames []string
-
-	for _, pattern := range patterns {
-		list, err := fs.Glob(fsys, pattern)
-		if err != nil {
-			return err
-		}
-		if len(list) == 0 {
-			return fmt.Errorf("template: pattern matches no files: %#q", pattern)
-		}
-		filenames = append(filenames, list...)
-	}
-
-	if err := w.Watch(filenames...); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (w *Watcher) Watch(filenames ...string) error {
-	for _, filename := range filenames {
-		if err := w.FSWatcher.Add(filename); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (w *Watcher) WatchWorker() {
 	for {
 		select {
-		case event, ok := <-w.FSWatcher.Events:
+		case event, ok := <-w.Events:
 			if !ok {
 				return
 			}
 
 			if event.Op&fsnotify.Write == fsnotify.Write {
-				w.template.ParseFiles(event.Name)
-				log.Println("modified file:", event.Name)
+				name := filepath.Base(event.Name)
+				tmpl, err := template.ParseFiles(event.Name)
+
+				if err != nil {
+					fmt.Println("failed to parse files", err)
+					continue
+				}
+
+				*tmpl.Lookup(name) = *tmpl
 			}
-		case err, ok := <-w.FSWatcher.Errors:
+
+		case err, ok := <-w.Errors:
 			if !ok {
 				return
 			}

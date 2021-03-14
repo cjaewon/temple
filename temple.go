@@ -1,29 +1,21 @@
 package temple
 
 import (
-	"html/template"
+	"path/filepath"
+	"text/template"
 )
 
-type Config struct {
-	Name string
-	Hot  bool
-}
+func NewHot(pattern string, t *template.Template) (*Watcher, error) {
+	watcher := newWatcher(t)
 
-// Template is template.Template wrapper which cover all of the html/template method
-type Template struct {
-	*template.Template
-	cfg     *Config
-	watcher *Watcher
-}
-
-// New creates a Template instance
-func New(c *Config) *Template {
-	t := Template{
-		Template: template.New(c.Name),
-		cfg:      c,
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
 	}
 
-	t.watcher = newWatcher(&t)
+	for _, match := range matches {
+		watcher.Add(match)
+	}
 
-	return &t
+	return watcher, nil
 }
